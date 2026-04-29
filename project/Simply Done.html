@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simply Done</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; }
+  body { font-family: 'DM Sans', sans-serif; }
+
+  @media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    body { background: white; }
+  }
+  .print-only { display: none; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ─── THEME DEFINITIONS ─────────────────────────────────────────────────── */
+const THEMES = {
+  lavender: {
+    name: 'Lavender Editorial',
+    bg: '#faf8fc',
+    bgCard: '#ffffff',
+    bgSidebar: '#f3eef9',
+    bgAccent: '#ede6f7',
+    border: '#e2d8f0',
+    text: '#1a1625',
+    textMuted: '#7c6e91',
+    textLight: '#b5aac5',
+    accent: 'oklch(52% 0.18 290)',
+    accentHover: 'oklch(46% 0.18 290)',
+    accentSoft: 'oklch(95% 0.05 290)',
+    accentText: '#ffffff',
+    gold: 'oklch(68% 0.12 75)',
+    headerBg: '#ffffff',
+    shadow: '0 2px 16px rgba(100,70,160,0.08)',
+    shadowHover: '0 8px 32px rgba(100,70,160,0.14)',
+    scrollThumb: '#c5b5e0',
+    categoryBg: 'oklch(94% 0.04 290)',
+    categoryText: 'oklch(42% 0.18 290)',
+    inputBg: '#f7f4fc',
+    inputBorder: '#d5c8e8',
+  },
+  midnight: {
+    name: 'Midnight Plum',
+    bg: '#100d18',
+    bgCard: '#1c1628',
+    bgSidebar: '#150e22',
+    bgAccent: '#231a34',
+    border: '#2e2245',
+    text: '#ede6f9',
+    textMuted: '#9b8fbd',
+    textLight: '#5e5276',
+    accent: 'oklch(72% 0.16 290)',
+    accentHover: 'oklch(78% 0.16 290)',
+    accentSoft: 'oklch(25% 0.08 290)',
+    accentText: '#100d18',
+    gold: 'oklch(78% 0.14 75)',
+    headerBg: '#150e22',
+    shadow: '0 2px 20px rgba(0,0,0,0.4)',
+    shadowHover: '0 8px 36px rgba(0,0,0,0.55)',
+    scrollThumb: '#3d2e5a',
+    categoryBg: 'oklch(22% 0.07 290)',
+    categoryText: 'oklch(80% 0.12 290)',
+    inputBg: '#1c1628',
+    inputBorder: '#2e2245',
+  },
+  spice: {
+    name: 'Spice Market',
+    bg: '#fdf6ee',
+    bgCard: '#ffffff',
+    bgSidebar: '#fef0e0',
+    bgAccent: '#fde8d0',
+    border: '#ecd5b8',
+    text: '#2a1f0e',
+    textMuted: '#8c6b45',
+    textLight: '#c4a880',
+    accent: 'oklch(52% 0.18 290)',
+    accentHover: 'oklch(46% 0.18 290)',
+    accentSoft: 'oklch(95% 0.06 290)',
+    accentText: '#ffffff',
+    gold: 'oklch(65% 0.15 55)',
+    headerBg: '#fff8f0',
+    shadow: '0 2px 16px rgba(80,40,10,0.08)',
+    shadowHover: '0 8px 32px rgba(80,40,10,0.14)',
+    scrollThumb: '#d4a870',
+    categoryBg: 'oklch(93% 0.04 60)',
+    categoryText: 'oklch(42% 0.14 55)',
+    inputBg: '#fef8f0',
+    inputBorder: '#e0c89a',
+  }
+};
+
+const CATEGORIES = ['Meat','Dairy','Fish','Pasta','Salad','Side','Soup','Dessert'];
+
+/* ─── SAMPLE DATA ────────────────────────────────────────────────────────── */
+const SEED_RECIPES = [
+  {
+    id: 1,
+    title: 'Lamb Kofta with Harissa Yogurt',
+    category: 'Meat',
+    tags: ['Middle Eastern','Grilled','Summer'],
+    prepTime: 20, cookTime: 15, servings: 4, difficulty: 'Medium',
+    story: 'This recipe takes me back to a warm evening in my grandmother\'s courtyard — the scent of cumin and charred meat drifting through the jasmine. She never measured a thing, just knew.',
+    description: 'Spiced ground lamb shaped around skewers, char-grilled and served with a smoky harissa-swirled yogurt. Simple, bold, and utterly satisfying.',
+    ingredients: [
+      '700g ground lamb', '1 small onion, finely grated', '3 garlic cloves, minced',
+      '2 tsp ground cumin', '1 tsp ground coriander', '½ tsp cinnamon',
+      '½ tsp smoked paprika', '1 tsp salt', '¼ tsp black pepper',
+      '2 tbsp fresh flat-leaf parsley, chopped', '1 tbsp fresh mint, chopped',
+      '—', '1 cup Greek yogurt', '2 tbsp harissa paste', '1 tbsp lemon juice',
+      '1 tbsp olive oil', 'Salt to taste'
+    ],
+    steps: [
+      'Combine lamb, onion, garlic, spices, herbs, salt and pepper. Mix thoroughly by hand for 2 minutes until the mixture is sticky and holds together.',
+      'Divide into 12 portions. Shape each around a flat metal skewer, pressing firmly to adhere.',
+      'Refrigerate skewers for at least 30 minutes to firm up.',
+      'Make the harissa yogurt: whisk together yogurt, harissa, lemon juice and olive oil. Season with salt. Refrigerate until serving.',
+      'Grill over high heat for 5–6 minutes, turning every 2 minutes, until nicely charred on all sides and just cooked through.',
+      'Serve immediately over warm flatbread with a generous dollop of harissa yogurt, pickled onions, and fresh herbs.'
+    ],
+    notes: 'Don\'t overwork the meat or the kofta will become dense. A little fat in the lamb is your friend here — it keeps everything moist.',
+    photo: null, createdAt: '2025-11-03'
+  },
+  {
+    id: 2,
+    title: 'Shakshuka with Creamy Feta',
+    category: 'Dairy',
+    tags: ['Middle Eastern','Breakfast','Vegetarian'],
+    prepTime: 10, cookTime: 25, servings: 4, difficulty: 'Easy',
+    story: 'A Saturday morning ritual. The whole kitchen smells of cumin and sweet tomatoes, and everyone gathers without being called.',
+    description: 'Eggs poached in a richly spiced tomato and pepper sauce, finished with crumbled feta that melts into little pockets of cream.',
+    ingredients: [
+      '2 tbsp olive oil', '1 large onion, diced', '1 red bell pepper, diced',
+      '4 garlic cloves, sliced', '1½ tsp ground cumin', '1 tsp sweet paprika',
+      '½ tsp chilli flakes', '2 x 400g tins crushed tomatoes', '1 tsp sugar',
+      'Salt and black pepper', '6 large eggs', '100g feta, crumbled',
+      '2 tbsp fresh coriander, chopped', 'Crusty bread to serve'
+    ],
+    steps: [
+      'Heat olive oil in a wide, deep skillet over medium heat. Add onion and pepper and cook until softened, about 8 minutes.',
+      'Add garlic, cumin, paprika and chilli. Cook 1 minute until fragrant.',
+      'Pour in tomatoes and sugar. Season with salt and pepper. Simmer 12–15 minutes until sauce thickens and deepens in colour.',
+      'Make 6 wells in the sauce with a spoon. Crack an egg into each well.',
+      'Cover and cook over low heat for 6–8 minutes until whites are just set and yolks are still runny.',
+      'Scatter feta and coriander over the top. Serve straight from the pan with crusty bread.'
+    ],
+    notes: 'Use the best quality tinned tomatoes you can find — it makes all the difference. San Marzano are my pick.',
+    photo: null, createdAt: '2025-11-10'
+  },
+  {
+    id: 3,
+    title: 'Miso-Glazed Salmon',
+    category: 'Fish',
+    tags: ['Japanese','Quick','Weeknight'],
+    prepTime: 5, cookTime: 12, servings: 2, difficulty: 'Easy',
+    story: 'I discovered this in Tokyo — a tiny restaurant, counter seats only, and a piece of salmon that changed how I thought about fish forever. This is my recreation.',
+    description: 'Salmon fillets lacquered in a sweet-savory miso glaze and broiled until caramelised. Fifteen minutes, restaurant quality.',
+    ingredients: [
+      '2 salmon fillets (200g each)', '3 tbsp white miso paste',
+      '2 tbsp mirin', '1 tbsp sake (or dry sherry)', '1 tsp sesame oil',
+      '1 tsp honey', '1 garlic clove, grated', '¼ tsp fresh ginger, grated',
+      '—', 'Steamed jasmine rice to serve', 'Sliced spring onions, to garnish',
+      'Toasted sesame seeds, to garnish'
+    ],
+    steps: [
+      'Whisk together miso, mirin, sake, sesame oil, honey, garlic and ginger into a smooth glaze.',
+      'Pat salmon dry. Coat generously with glaze on all sides. Marinate for at least 30 minutes (or overnight in the fridge).',
+      'Preheat your grill/broiler to high. Line a baking tray with foil and place salmon skin-side down.',
+      'Broil 10–12 minutes until the glaze is deeply caramelised with some charred edges, and the fish flakes easily.',
+      'Rest 1 minute. Serve over steamed rice, garnished with spring onions and sesame seeds.'
+    ],
+    notes: 'White miso is milder and sweeter than red. Don\'t substitute — the balance of the glaze depends on it.',
+    photo: null, createdAt: '2025-12-01'
+  },
+  {
+    id: 4,
+    title: 'Za\'atar Pasta with Brown Butter & Pine Nuts',
+    category: 'Pasta',
+    tags: ['Middle Eastern','Fusion','Vegetarian'],
+    prepTime: 5, cookTime: 20, servings: 4, difficulty: 'Easy',
+    story: 'Born out of a near-empty fridge and a jar of za\'atar I\'d been hoarding. It became one of our most-requested weeknight dinners.',
+    description: 'Nutty browned butter tossed with al dente pasta, za\'atar and toasted pine nuts. A handful of ingredients, unexpectedly elegant.',
+    ingredients: [
+      '400g linguine or spaghetti', '100g unsalted butter',
+      '3 tbsp za\'atar blend', '50g pine nuts',
+      '2 garlic cloves, thinly sliced', 'Zest of 1 lemon',
+      '2 tbsp lemon juice', '50g Parmesan, finely grated',
+      '1 cup pasta water (reserved)', 'Salt and black pepper',
+      'Fresh flat-leaf parsley to finish'
+    ],
+    steps: [
+      'Cook pasta in generously salted boiling water until al dente. Reserve 1 cup pasta water before draining.',
+      'While pasta cooks, toast pine nuts in a dry pan over medium heat until golden. Set aside.',
+      'In the same pan, melt butter over medium-low heat. Cook until the milk solids turn golden-brown and nutty, about 5 minutes. Add garlic, cook 30 seconds.',
+      'Remove from heat. Stir in za\'atar, lemon zest and lemon juice.',
+      'Add drained pasta to the pan with a splash of pasta water. Toss vigorously to coat, adding more water to achieve a glossy sauce.',
+      'Plate and top with pine nuts, Parmesan, parsley, and a crack of black pepper.'
+    ],
+    notes: 'Brown butter waits for no one — have your pasta ready before you start browning. Once it goes golden, it goes to burnt in seconds.',
+    photo: null, createdAt: '2026-01-08'
+  },
+  {
+    id: 5,
+    title: 'Fattoush Salad',
+    category: 'Salad',
+    tags: ['Lebanese','Vegetarian','Summer'],
+    prepTime: 20, cookTime: 10, servings: 6, difficulty: 'Easy',
+    story: 'The salad of my childhood summers. The crunch of the fried bread against cold tomatoes — there is nothing else quite like it.',
+    description: 'A bright, herb-forward Lebanese bread salad with crisp fried pita, ripe tomatoes, cucumbers and a tangy sumac-lemon dressing.',
+    ingredients: [
+      '2 large flatbreads / pita', 'Vegetable oil for frying',
+      '—', '4 ripe tomatoes, roughly chopped', '2 Persian cucumbers, sliced',
+      '5 radishes, thinly sliced', '4 spring onions, sliced',
+      '1 cup flat-leaf parsley leaves', '½ cup fresh mint leaves',
+      '—', '4 tbsp olive oil', '3 tbsp lemon juice', '1½ tsp ground sumac',
+      '1 tsp pomegranate molasses', '1 garlic clove, minced',
+      '½ tsp salt', 'Pinch of sugar'
+    ],
+    steps: [
+      'Tear or cut flatbreads into rough pieces. Fry in 1cm of hot oil until golden and crisp. Drain on paper towels, season with salt.',
+      'Whisk together dressing: olive oil, lemon juice, sumac, pomegranate molasses, garlic, salt and sugar.',
+      'Combine tomatoes, cucumbers, radishes, spring onions, parsley and mint in a large bowl.',
+      'Pour dressing over and toss gently. Taste and adjust seasoning.',
+      'Add fried bread just before serving so it keeps some crunch but absorbs a little dressing. Toss once and serve immediately.'
+    ],
+    notes: 'The fried bread is non-negotiable. Baked croutons are fine but they don\'t give you the same shatter.',
+    photo: null, createdAt: '2026-01-20'
+  },
+  {
+    id: 6,
+    title: 'Persian Jeweled Rice (Morasa Polo)',
+    category: 'Side',
+    tags: ['Persian','Celebration','Vegetarian'],
+    prepTime: 30, cookTime: 60, servings: 8, difficulty: 'Hard',
+    story: 'Made this for our first dinner party as a couple. Everyone went quiet when it came to the table — that golden crust, those jewel-bright fruits. It felt like a ceremony.',
+    description: 'Fragrant saffron rice studded with candied orange peel, barberries, pistachios and almonds, crowned with a prized golden crust (tahdig).',
+    ingredients: [
+      '3 cups basmati rice', '1 tsp saffron threads', '3 tbsp hot water',
+      '4 tbsp butter, divided', '2 tbsp vegetable oil',
+      '—', '100g dried barberries (zereshk)', '1 tbsp sugar',
+      '100g candied orange peel, chopped', '50g slivered almonds, toasted',
+      '50g shelled pistachios', '1 tsp ground cardamom',
+      '½ tsp cinnamon', 'Salt', '1 large potato, thinly sliced (for tahdig)'
+    ],
+    steps: [
+      'Rinse rice until water runs clear. Soak in cold salted water 1 hour. Drain.',
+      'Bloom saffron in 3 tbsp hot (not boiling) water for 15 minutes.',
+      'Par-cook rice in a large pot of boiling salted water for 6 minutes — just until the outside softens but the centre is still firm. Drain.',
+      'Heat oil and 2 tbsp butter in the pot. Layer potato slices to cover the bottom completely (this becomes the tahdig). Season.',
+      'Gently mound rice on top, building it into a loose pyramid. Drizzle remaining butter and half the saffron water over the rice.',
+      'Wrap the lid in a clean cloth, place on pot. Cook on medium-high 3 minutes, then reduce to very low. Steam 40–45 minutes.',
+      'Meanwhile, sauté barberries with sugar and 1 tbsp butter for 2 minutes. Combine with orange peel, nuts, cardamom and cinnamon.',
+      'Spoon rice onto a platter, drizzle remaining saffron water on top. Scatter jewels over the rice. Flip the pot to release the golden tahdig alongside.'
+    ],
+    notes: 'The cloth on the lid is essential — it absorbs steam and keeps the rice fluffy, not wet. Don\'t skip the soak either.',
+    photo: null, createdAt: '2026-02-14'
+  },
+  {
+    id: 7,
+    title: 'Tom Kha Gai',
+    category: 'Soup',
+    tags: ['Thai','Coconut','Comfort'],
+    prepTime: 15, cookTime: 20, servings: 4, difficulty: 'Medium',
+    story: 'When the cold sets in and we need something that feels like a warm hand on the shoulder, this is the soup. Every single time.',
+    description: 'Silky coconut milk broth scented with galangal, lemongrass and kaffir lime — gentle heat, deep flavour, impossible to leave alone.',
+    ingredients: [
+      '800ml coconut milk', '400ml chicken stock',
+      '3 stalks lemongrass, bruised and cut into pieces',
+      '6 slices galangal (or fresh ginger)', '4 kaffir lime leaves, torn',
+      '3 bird\'s eye chillies, bruised', '2 garlic cloves, smashed',
+      '400g chicken breast, thinly sliced', '200g oyster mushrooms',
+      '3 tbsp fish sauce', '2 tbsp lime juice', '1 tsp palm sugar (or brown sugar)',
+      '—', 'Fresh coriander and sliced red chilli to garnish'
+    ],
+    steps: [
+      'Combine coconut milk and stock in a saucepan over medium heat. Add lemongrass, galangal, kaffir lime leaves, chillies and garlic.',
+      'Bring to a gentle simmer. Do not boil hard — it will break the coconut milk. Simmer 10 minutes to infuse.',
+      'Add chicken slices and mushrooms. Simmer 5–6 minutes until chicken is just cooked through.',
+      'Season with fish sauce, lime juice and sugar. Taste carefully — it should be salty, sour, and gently sweet.',
+      'Ladle into bowls, leaving the aromatics behind. Garnish with coriander and fresh chilli.'
+    ],
+    notes: 'Don\'t fish out the galangal and lemongrass before serving — they\'re not meant to be eaten, but seeing them in the bowl tells the whole story.',
+    photo: null, createdAt: '2026-02-28'
+  },
+  {
+    id: 8,
+    title: 'Rosewater & Cardamom Panna Cotta',
+    category: 'Dessert',
+    tags: ['Middle Eastern','Elegant','Make-Ahead'],
+    prepTime: 15, cookTime: 5, servings: 6, difficulty: 'Medium',
+    story: 'The dessert I make when I want the table to fall silent for just a moment. Set the night before, it\'s the calmest thing you can offer guests.',
+    description: 'Trembling vanilla panna cotta perfumed with rosewater and green cardamom, served with a dark pomegranate reduction and crushed pistachios.',
+    ingredients: [
+      '600ml heavy cream', '200ml whole milk',
+      '60g caster sugar', '2½ tsp powdered gelatine',
+      '3 tbsp cold water', '1 tsp rosewater',
+      '½ tsp ground cardamom', '1 tsp vanilla extract',
+      '—', '200ml pomegranate juice', '2 tbsp sugar',
+      '1 tsp lemon juice',
+      '—', 'Crushed pistachios and dried rose petals to garnish'
+    ],
+    steps: [
+      'Sprinkle gelatine over cold water. Let bloom 5 minutes.',
+      'Heat cream, milk and sugar in a saucepan over medium heat, stirring, until sugar dissolves. Do not boil.',
+      'Remove from heat. Add bloomed gelatine and stir until fully dissolved.',
+      'Stir in rosewater, cardamom and vanilla. Taste — the flavour should be present but delicate.',
+      'Strain through a fine sieve into a jug. Divide between 6 lightly greased ramekins or glasses.',
+      'Refrigerate at least 4 hours, or overnight.',
+      'For the pomegranate reduction: simmer pomegranate juice, sugar and lemon juice 10–12 minutes until syrupy. Cool completely.',
+      'To unmould, run a thin knife around the edge and invert onto a plate. Or serve in the glass. Drizzle pomegranate reduction and scatter pistachios and rose petals.'
+    ],
+    notes: 'Too much rosewater is the one mistake. Start with ¾ tsp, taste, then add more. It should whisper, not shout.',
+    photo: null, createdAt: '2026-03-15'
+  }
+];
+
+/* ─── ICONS ──────────────────────────────────────────────────────────────── */
+const Icon = ({ name, size = 18, style = {} }) => {
+  const paths = {
+    home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+    plus: 'M12 4v16m8-8H4',
+    search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+    back: 'M19 12H5m7-7-7 7 7 7',
+    edit: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+    trash: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+    print: 'M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z',
+    clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+    users: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+    star: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
+    book: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+    x: 'M6 18L18 6M6 6l12 12',
+    image: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+    tag: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z',
+    save: 'M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4',
+    menu: 'M4 6h16M4 12h16M4 18h16',
+    eye: 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"
+      strokeLinejoin="round" style={style}>
+      <path d={paths[name]} />
+    </svg>
+  );
+};
+
+/* ─── PHOTO PLACEHOLDER ──────────────────────────────────────────────────── */
+const PhotoPlaceholder = ({ label = '', style = {}, t }) => (
+  <div style={{
+    background: `repeating-linear-gradient(45deg, ${t.bgAccent} 0px, ${t.bgAccent} 8px, ${t.border} 8px, ${t.border} 9px)`,
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: 8, color: t.textLight, fontFamily: 'monospace', fontSize: 11, textAlign: 'center',
+    ...style
+  }}>
+    <Icon name="image" size={28} />
+    <span style={{ maxWidth: 120, lineHeight: 1.4 }}>{label || 'recipe photo'}</span>
+  </div>
+);
+
+/* ─── DIFFICULTY BADGE ───────────────────────────────────────────────────── */
+const DiffBadge = ({ level, t }) => {
+  const colors = { Easy: '#22c55e', Medium: '#f59e0b', Hard: '#ef4444' };
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 9px', borderRadius: 99,
+      background: colors[level] + '22', color: colors[level],
+      fontSize: 11, fontWeight: 600, letterSpacing: '0.02em'
+    }}>{level}</span>
+  );
+};
+
+/* ─── CATEGORY CHIP ──────────────────────────────────────────────────────── */
+const Chip = ({ label, active, onClick, t, small }) => (
+  <button onClick={onClick} style={{
+    padding: small ? '3px 10px' : '5px 14px',
+    borderRadius: 99,
+    border: active ? 'none' : `1px solid ${t.border}`,
+    background: active ? t.accent : t.bgCard,
+    color: active ? t.accentText : t.textMuted,
+    fontSize: small ? 11 : 12, fontWeight: 500, cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s',
+    whiteSpace: 'nowrap',
+  }}>{label}</button>
+);
+
+/* ─── RECIPE CARD ────────────────────────────────────────────────────────── */
+const RecipeCard = ({ recipe, onClick, t }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: t.bgCard, borderRadius: 16,
+        border: `1px solid ${t.border}`,
+        overflow: 'hidden', cursor: 'pointer',
+        boxShadow: hovered ? t.shadowHover : t.shadow,
+        transform: hovered ? 'translateY(-3px)' : 'none',
+        transition: 'all 0.2s ease',
+      }}
+    >
+      <PhotoPlaceholder
+        label={recipe.title}
+        t={t}
+        style={{ width: '100%', height: 180 }}
+      />
+      <div style={{ padding: '16px 18px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{
+            padding: '2px 10px', borderRadius: 99, fontSize: 10, fontWeight: 600,
+            background: t.categoryBg, color: t.categoryText,
+            letterSpacing: '0.06em', textTransform: 'uppercase'
+          }}>{recipe.category}</span>
+          <DiffBadge level={recipe.difficulty} t={t} />
+        </div>
+        <h3 style={{
+          fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600,
+          color: t.text, marginBottom: 8, lineHeight: 1.3,
+          textWrap: 'pretty'
+        }}>{recipe.title}</h3>
+        <p style={{ fontSize: 12.5, color: t.textMuted, lineHeight: 1.55, marginBottom: 12, textWrap: 'pretty' }}>
+          {recipe.description?.substring(0, 90)}{recipe.description?.length > 90 ? '…' : ''}
+        </p>
+        <div style={{ display: 'flex', gap: 14, color: t.textLight, fontSize: 12 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="clock" size={13} /> {recipe.prepTime + recipe.cookTime}m
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="users" size={13} /> {recipe.servings}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── RECIPE DETAIL VIEW ─────────────────────────────────────────────────── */
+const RecipeDetail = ({ recipe, onBack, onEdit, onDelete, t }) => {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const ingredients = recipe.ingredients || [];
+  const steps = recipe.steps || [];
+
+  return (
+    <div style={{ maxWidth: 820, margin: '0 auto', padding: '0 0 60px' }}>
+      {/* Header bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 0 24px' }}>
+        <button onClick={onBack} style={{
+          display: 'flex', alignItems: 'center', gap: 7, background: 'none',
+          border: 'none', color: t.textMuted, cursor: 'pointer',
+          fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 500,
+          padding: '6px 0'
+        }}>
+          <Icon name="back" size={16} /> Back to recipes
+        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onEdit} style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+            borderRadius: 8, border: `1px solid ${t.border}`, background: t.bgCard,
+            color: t.text, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+            fontSize: 13, fontWeight: 500
+          }}>
+            <Icon name="edit" size={14} /> Edit
+          </button>
+          {!confirmDelete ? (
+            <button onClick={() => setConfirmDelete(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+              borderRadius: 8, border: `1px solid #fca5a5`, background: '#fff1f1',
+              color: '#ef4444', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+              fontSize: 13, fontWeight: 500
+            }}>
+              <Icon name="trash" size={14} /> Delete
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={onDelete} style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none',
+                background: '#ef4444', color: 'white', cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600
+              }}>Confirm</button>
+              <button onClick={() => setConfirmDelete(false)} style={{
+                padding: '8px 16px', borderRadius: 8, border: `1px solid ${t.border}`,
+                background: t.bgCard, color: t.textMuted, cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif', fontSize: 13
+              }}>Cancel</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 36 }}>
+        <PhotoPlaceholder label={recipe.title} t={t} style={{ width: '100%', height: 320 }} />
+      </div>
+
+      {/* Title block */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+          <span style={{
+            padding: '3px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+            background: t.categoryBg, color: t.categoryText,
+            letterSpacing: '0.07em', textTransform: 'uppercase'
+          }}>{recipe.category}</span>
+          <DiffBadge level={recipe.difficulty} t={t} />
+          {recipe.tags?.map(tag => (
+            <span key={tag} style={{
+              padding: '2px 9px', borderRadius: 99, fontSize: 10,
+              background: t.bgAccent, color: t.textMuted,
+              border: `1px solid ${t.border}`
+            }}>{tag}</span>
+          ))}
+        </div>
+        <h1 style={{
+          fontFamily: 'Playfair Display, serif', fontSize: 38, fontWeight: 700,
+          color: t.text, lineHeight: 1.2, marginBottom: 16
+        }}>{recipe.title}</h1>
+
+        <div style={{ display: 'flex', gap: 24, color: t.textMuted, fontSize: 13 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="clock" size={15} style={{ color: t.accent }} />
+            <strong style={{ color: t.text }}>Prep:</strong>&nbsp;{recipe.prepTime} min
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="clock" size={15} style={{ color: t.accent }} />
+            <strong style={{ color: t.text }}>Cook:</strong>&nbsp;{recipe.cookTime} min
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="users" size={15} style={{ color: t.accent }} />
+            <strong style={{ color: t.text }}>Serves:</strong>&nbsp;{recipe.servings}
+          </span>
+        </div>
+      </div>
+
+      {/* Story */}
+      {recipe.story && (
+        <div style={{
+          padding: '20px 24px', borderRadius: 14, marginBottom: 32,
+          background: t.accentSoft, borderLeft: `3px solid ${t.accent}`,
+          fontFamily: 'Playfair Display, serif', fontStyle: 'italic',
+          fontSize: 15.5, color: t.text, lineHeight: 1.7
+        }}>
+          "{recipe.story}"
+        </div>
+      )}
+
+      {recipe.description && (
+        <p style={{ fontSize: 15, color: t.textMuted, lineHeight: 1.75, marginBottom: 36, textWrap: 'pretty' }}>
+          {recipe.description}
+        </p>
+      )}
+
+      {/* Two-col layout: ingredients + steps */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 40, alignItems: 'start' }}>
+        {/* Ingredients */}
+        <div>
+          <h2 style={{
+            fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 600,
+            color: t.text, marginBottom: 18, paddingBottom: 10,
+            borderBottom: `1px solid ${t.border}`
+          }}>Ingredients</h2>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {ingredients.map((ing, i) => ing === '—' ? (
+              <li key={i} style={{ height: 1, background: t.border, margin: '6px 0' }} />
+            ) : (
+              <li key={i} style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                fontSize: 13.5, color: t.text, lineHeight: 1.5
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                  marginTop: 6, background: t.accent
+                }} />
+                {ing}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Instructions */}
+        <div>
+          <h2 style={{
+            fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 600,
+            color: t.text, marginBottom: 18, paddingBottom: 10,
+            borderBottom: `1px solid ${t.border}`
+          }}>Method</h2>
+          <ol style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {steps.map((step, i) => (
+              <li key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <span style={{
+                  flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                  background: t.accent, color: t.accentText,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'Playfair Display, serif', fontWeight: 600, fontSize: 13
+                }}>{i + 1}</span>
+                <p style={{ fontSize: 14, color: t.text, lineHeight: 1.7, marginTop: 4, textWrap: 'pretty' }}>{step}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+
+      {/* Notes */}
+      {recipe.notes && (
+        <div style={{
+          marginTop: 36, padding: '18px 22px', borderRadius: 12,
+          background: t.bgAccent, border: `1px solid ${t.border}`
+        }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+            textTransform: 'uppercase', color: t.gold, marginBottom: 8
+          }}>Chef's Notes</div>
+          <p style={{ fontSize: 14, color: t.text, lineHeight: 1.7 }}>{recipe.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ─── RECIPE FORM ────────────────────────────────────────────────────────── */
+const RecipeForm = ({ initial, onSave, onCancel, t }) => {
+  const empty = {
+    title: '', category: 'Meat', tags: [], description: '', story: '',
+    prepTime: '', cookTime: '', servings: '', difficulty: 'Easy',
+    ingredients: [''], steps: [''], notes: ''
+  };
+  const [form, setForm] = useState(initial || empty);
+  const [tagInput, setTagInput] = useState('');
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  const updateList = (key, idx, val) => {
+    const arr = [...form[key]];
+    arr[idx] = val;
+    set(key, arr);
+  };
+  const addListItem = (key) => set(key, [...form[key], '']);
+  const removeListItem = (key, idx) => set(key, form[key].filter((_, i) => i !== idx));
+
+  const addTag = () => {
+    const v = tagInput.trim();
+    if (v && !form.tags.includes(v)) set('tags', [...form.tags, v]);
+    setTagInput('');
+  };
+
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', borderRadius: 8,
+    border: `1px solid ${t.inputBorder}`, background: t.inputBg,
+    color: t.text, fontFamily: 'DM Sans, sans-serif', fontSize: 14,
+    outline: 'none', transition: 'border 0.15s'
+  };
+
+  const labelStyle = {
+    display: 'block', fontSize: 11, fontWeight: 600,
+    letterSpacing: '0.06em', textTransform: 'uppercase',
+    color: t.textMuted, marginBottom: 6
+  };
+
+  const Section = ({ title, children }) => (
+    <div style={{ marginBottom: 28 }}>
+      <h3 style={{
+        fontFamily: 'Playfair Display, serif', fontSize: 17, color: t.text,
+        fontWeight: 600, marginBottom: 16, paddingBottom: 10,
+        borderBottom: `1px solid ${t.border}`
+      }}>{title}</h3>
+      {children}
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 780, margin: '0 auto', padding: '0 0 80px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 0 32px' }}>
+        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, color: t.text }}>
+          {initial ? 'Edit Recipe' : 'New Recipe'}
+        </h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{
+            padding: '9px 20px', borderRadius: 8, border: `1px solid ${t.border}`,
+            background: t.bgCard, color: t.textMuted, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 14
+          }}>Cancel</button>
+          <button onClick={() => onSave(form)} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '9px 22px', borderRadius: 8, border: 'none',
+            background: t.accent, color: t.accentText, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 600
+          }}>
+            <Icon name="save" size={15} /> Save Recipe
+          </button>
+        </div>
+      </div>
+
+      <Section title="Basics">
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Recipe Title *</label>
+            <input style={inputStyle} value={form.title}
+              placeholder="e.g. Slow-Roasted Lamb Shoulder"
+              onChange={e => set('title', e.target.value)} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)}>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Difficulty</label>
+              <select style={inputStyle} value={form.difficulty} onChange={e => set('difficulty', e.target.value)}>
+                {['Easy','Medium','Hard'].map(d => <option key={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Prep Time (min)</label>
+              <input style={inputStyle} type="number" value={form.prepTime}
+                onChange={e => set('prepTime', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Cook Time (min)</label>
+              <input style={inputStyle} type="number" value={form.cookTime}
+                onChange={e => set('cookTime', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Servings</label>
+              <input style={inputStyle} type="number" value={form.servings}
+                onChange={e => set('servings', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Tags</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              {form.tags.map(tag => (
+                <span key={tag} style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '3px 10px', borderRadius: 99,
+                  background: t.accentSoft, color: t.accent,
+                  fontSize: 12, border: `1px solid ${t.accent}44`
+                }}>
+                  {tag}
+                  <button onClick={() => set('tags', form.tags.filter(t2 => t2 !== tag))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...inputStyle, flex: 1 }} value={tagInput}
+                placeholder="Add a tag (e.g. Weeknight, Spicy)…"
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addTag()} />
+              <button onClick={addTag} style={{
+                padding: '10px 16px', borderRadius: 8, border: `1px solid ${t.border}`,
+                background: t.bgCard, color: t.textMuted, cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif', fontSize: 13
+              }}>Add</button>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Photo">
+        <PhotoPlaceholder label="Drop your recipe photo here" t={t}
+          style={{ width: '100%', height: 200, borderRadius: 12, cursor: 'pointer' }} />
+        <p style={{ fontSize: 12, color: t.textLight, marginTop: 8 }}>Photo upload coming in the full version</p>
+      </Section>
+
+      <Section title="Description & Story">
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Description</label>
+            <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 80 }}
+              value={form.description} placeholder="A short description of the dish…"
+              onChange={e => set('description', e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Your story / memory</label>
+            <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 100 }}
+              value={form.story} placeholder="Where does this recipe come from? What does it mean to you?"
+              onChange={e => set('story', e.target.value)} />
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Ingredients">
+        <p style={{ fontSize: 12, color: t.textMuted, marginBottom: 12 }}>
+          Use <code style={{ background: t.bgAccent, padding: '1px 5px', borderRadius: 4 }}>—</code> as a separator between ingredient groups.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {form.ingredients.map((ing, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...inputStyle, flex: 1 }} value={ing}
+                placeholder={i === 0 ? 'e.g. 2 tbsp olive oil' : ''}
+                onChange={e => updateList('ingredients', i, e.target.value)} />
+              <button onClick={() => removeListItem('ingredients', i)} style={{
+                padding: '8px 12px', borderRadius: 8, border: `1px solid ${t.border}`,
+                background: t.bgCard, color: t.textLight, cursor: 'pointer'
+              }}>×</button>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => addListItem('ingredients')} style={{
+          marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 16px', borderRadius: 8, border: `1px dashed ${t.border}`,
+          background: 'none', color: t.textMuted, cursor: 'pointer',
+          fontFamily: 'DM Sans, sans-serif', fontSize: 13
+        }}>
+          <Icon name="plus" size={14} /> Add ingredient
+        </button>
+      </Section>
+
+      <Section title="Method">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {form.steps.map((step, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{
+                flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                background: t.accentSoft, color: t.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'Playfair Display, serif', fontWeight: 600, fontSize: 13, marginTop: 6
+              }}>{i + 1}</span>
+              <textarea style={{ ...inputStyle, flex: 1, resize: 'vertical', minHeight: 72 }}
+                value={step}
+                placeholder={`Step ${i + 1}…`}
+                onChange={e => updateList('steps', i, e.target.value)} />
+              <button onClick={() => removeListItem('steps', i)} style={{
+                padding: '8px 10px', borderRadius: 8, border: `1px solid ${t.border}`,
+                background: t.bgCard, color: t.textLight, cursor: 'pointer', marginTop: 6
+              }}>×</button>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => addListItem('steps')} style={{
+          marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 16px', borderRadius: 8, border: `1px dashed ${t.border}`,
+          background: 'none', color: t.textMuted, cursor: 'pointer',
+          fontFamily: 'DM Sans, sans-serif', fontSize: 13
+        }}>
+          <Icon name="plus" size={14} /> Add step
+        </button>
+      </Section>
+
+      <Section title="Chef's Notes">
+        <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 90 }}
+          value={form.notes}
+          placeholder="Tips, substitutions, make-ahead advice…"
+          onChange={e => set('notes', e.target.value)} />
+      </Section>
+    </div>
+  );
+};
+
+/* ─── PRINT PREVIEW ──────────────────────────────────────────────────────── */
+const PrintPreview = ({ recipes, onClose, t }) => {
+  const chapters = CATEGORIES.filter(c => recipes.some(r => r.category === c));
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: t.bg, overflow: 'auto'
+    }}>
+      {/* Toolbar */}
+      <div className="no-print" style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: t.headerBg, borderBottom: `1px solid ${t.border}`,
+        padding: '12px 40px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{
+            fontFamily: 'Playfair Display, serif', fontStyle: 'italic',
+            fontSize: 20, color: t.accent
+          }}>Simply Done</span>
+          <span style={{ fontSize: 13, color: t.textMuted }}>— Print Preview</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => window.print()} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '9px 20px', borderRadius: 8, border: 'none',
+            background: t.accent, color: t.accentText, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 600
+          }}>
+            <Icon name="print" size={15} /> Print / Save PDF
+          </button>
+          <button onClick={onClose} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '9px 16px', borderRadius: 8, border: `1px solid ${t.border}`,
+            background: t.bgCard, color: t.textMuted, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 14
+          }}>
+            <Icon name="x" size={15} /> Close
+          </button>
+        </div>
+      </div>
+
+      {/* Book content */}
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 40px 80px' }}>
+        {/* Cover page */}
+        <div style={{
+          textAlign: 'center', padding: '80px 40px',
+          borderBottom: `2px solid ${t.border}`, marginBottom: 60
+        }}>
+          <div style={{
+            width: 3, height: 60, background: t.accent,
+            margin: '0 auto 32px', borderRadius: 2
+          }} />
+          <h1 style={{
+            fontFamily: 'Playfair Display, serif', fontSize: 58,
+            fontWeight: 700, color: t.text, letterSpacing: '-0.01em', marginBottom: 8
+          }}>Simply Done</h1>
+          <p style={{
+            fontFamily: 'Playfair Display, serif', fontStyle: 'italic',
+            fontSize: 20, color: t.accent, marginBottom: 32
+          }}>A personal collection of beloved recipes</p>
+          <p style={{ fontSize: 13, color: t.textMuted }}>{recipes.length} recipes across {chapters.length} chapters</p>
+        </div>
+
+        {/* Table of contents */}
+        <div style={{ marginBottom: 60, pageBreakAfter: 'always' }}>
+          <h2 style={{
+            fontFamily: 'Playfair Display, serif', fontSize: 28,
+            color: t.text, marginBottom: 24
+          }}>Contents</h2>
+          {chapters.map(cat => {
+            const catRecipes = recipes.filter(r => r.category === cat);
+            return (
+              <div key={cat} style={{ marginBottom: 20 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', color: t.gold, marginBottom: 8
+                }}>{cat}</div>
+                {catRecipes.map(r => (
+                  <div key={r.id} style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    padding: '6px 0', borderBottom: `1px dotted ${t.border}`,
+                    fontSize: 14, color: t.text
+                  }}>
+                    <span style={{ fontFamily: 'Playfair Display, serif' }}>{r.title}</span>
+                    <span style={{ color: t.textMuted, fontSize: 12 }}>
+                      {r.prepTime + r.cookTime}m · Serves {r.servings}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Chapter pages */}
+        {chapters.map(cat => {
+          const catRecipes = recipes.filter(r => r.category === cat);
+          return (
+            <div key={cat}>
+              {/* Chapter header */}
+              <div style={{
+                padding: '60px 0 40px',
+                borderTop: `2px solid ${t.border}`,
+                marginBottom: 40, pageBreakBefore: 'always'
+              }}>
+                <div style={{ fontSize: 11, letterSpacing: '0.12em', color: t.gold, marginBottom: 10, fontWeight: 600, textTransform: 'uppercase' }}>Chapter</div>
+                <h2 style={{
+                  fontFamily: 'Playfair Display, serif', fontSize: 42,
+                  fontWeight: 700, color: t.text
+                }}>{cat}</h2>
+                <div style={{ width: 40, height: 2, background: t.accent, marginTop: 16 }} />
+              </div>
+
+              {/* Recipes in chapter */}
+              {catRecipes.map(recipe => (
+                <div key={recipe.id} style={{
+                  marginBottom: 60, pageBreakInside: 'avoid',
+                  paddingBottom: 48, borderBottom: `1px solid ${t.border}`
+                }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <h3 style={{
+                      fontFamily: 'Playfair Display, serif', fontSize: 28,
+                      fontWeight: 600, color: t.text, marginBottom: 10
+                    }}>{recipe.title}</h3>
+                    <div style={{ display: 'flex', gap: 20, fontSize: 12, color: t.textMuted }}>
+                      <span>Prep: {recipe.prepTime}m</span>
+                      <span>Cook: {recipe.cookTime}m</span>
+                      <span>Serves: {recipe.servings}</span>
+                      <span>Difficulty: {recipe.difficulty}</span>
+                    </div>
+                  </div>
+
+                  {recipe.story && (
+                    <p style={{
+                      fontFamily: 'Playfair Display, serif', fontStyle: 'italic',
+                      fontSize: 14, color: t.textMuted, lineHeight: 1.7,
+                      marginBottom: 20, paddingLeft: 16, borderLeft: `2px solid ${t.accent}`
+                    }}>"{recipe.story}"</p>
+                  )}
+
+                  {recipe.description && (
+                    <p style={{ fontSize: 13.5, color: t.text, lineHeight: 1.7, marginBottom: 24 }}>{recipe.description}</p>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 32 }}>
+                    <div>
+                      <h4 style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, color: t.text, marginBottom: 12 }}>Ingredients</h4>
+                      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {recipe.ingredients?.map((ing, i) => ing === '—' ? (
+                          <li key={i} style={{ height: 1, background: t.border, margin: '4px 0' }} />
+                        ) : (
+                          <li key={i} style={{ fontSize: 12.5, color: t.text, display: 'flex', gap: 8, lineHeight: 1.5 }}>
+                            <span style={{ color: t.accent, marginTop: 3, fontSize: 8 }}>●</span> {ing}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, color: t.text, marginBottom: 12 }}>Method</h4>
+                      <ol style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {recipe.steps?.map((step, i) => (
+                          <li key={i} style={{ display: 'flex', gap: 10, fontSize: 12.5, color: t.text, lineHeight: 1.6 }}>
+                            <span style={{ flexShrink: 0, fontFamily: 'Playfair Display, serif', fontWeight: 700, color: t.accent, fontSize: 14 }}>{i + 1}.</span>
+                            {step}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  </div>
+
+                  {recipe.notes && (
+                    <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 8, background: t.bgAccent }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.gold }}>Chef's Notes</span>
+                      <p style={{ fontSize: 12.5, color: t.text, lineHeight: 1.65, marginTop: 6 }}>{recipe.notes}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+/* ─── MAIN APP ───────────────────────────────────────────────────────────── */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "lavender",
+  "showIntro": true
+}/*EDITMODE-END*/;
+
+const App = () => {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const t = THEMES[tweaks.theme] || THEMES.lavender;
+
+  const [recipes, setRecipes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('simply-done-recipes');
+      return saved ? JSON.parse(saved) : SEED_RECIPES;
+    } catch { return SEED_RECIPES; }
+  });
+
+  const [view, setView] = useState('browse'); // browse | detail | form | print
+  const [activeRecipe, setActiveRecipe] = useState(null);
+  const [editRecipe, setEditRecipe] = useState(null);
+  const [searchQ, setSearchQ] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showPrint, setShowPrint] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('simply-done-recipes', JSON.stringify(recipes));
+  }, [recipes]);
+
+  const filtered = recipes.filter(r => {
+    const matchesCat = activeCategory === 'All' || r.category === activeCategory;
+    const q = searchQ.toLowerCase();
+    const matchesSearch = !q || r.title.toLowerCase().includes(q) ||
+      r.tags?.some(t2 => t2.toLowerCase().includes(q)) ||
+      r.category.toLowerCase().includes(q);
+    return matchesCat && matchesSearch;
+  });
+
+  const handleSave = (form) => {
+    if (editRecipe) {
+      setRecipes(rs => rs.map(r => r.id === editRecipe.id ? { ...editRecipe, ...form } : r));
+    } else {
+      const newR = { ...form, id: Date.now(), createdAt: new Date().toISOString().slice(0, 10) };
+      setRecipes(rs => [...rs, newR]);
+    }
+    setView('browse');
+    setEditRecipe(null);
+  };
+
+  const handleDelete = () => {
+    setRecipes(rs => rs.filter(r => r.id !== activeRecipe.id));
+    setView('browse');
+    setActiveRecipe(null);
+  };
+
+  const categoryCounts = ['All', ...CATEGORIES].reduce((acc, c) => {
+    acc[c] = c === 'All' ? recipes.length : recipes.filter(r => r.category === c).length;
+    return acc;
+  }, {});
+
+  // Apply theme to scrollbar
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'theme-scrollbar';
+    style.textContent = `::-webkit-scrollbar-thumb { background: ${t.scrollThumb}; }`;
+    document.getElementById('theme-scrollbar')?.remove();
+    document.head.appendChild(style);
+  }, [t.scrollThumb]);
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', background: t.bg, color: t.text }}>
+
+      {/* Sidebar */}
+      <div style={{
+        width: sidebarOpen ? 220 : 0, flexShrink: 0,
+        background: t.bgSidebar, borderRight: `1px solid ${t.border}`,
+        overflow: 'hidden', transition: 'width 0.2s ease',
+        display: 'flex', flexDirection: 'column'
+      }}>
+        <div style={{ padding: '28px 20px 16px', flexShrink: 0 }}>
+          <div style={{
+            fontFamily: 'Playfair Display, serif', fontStyle: 'italic',
+            fontSize: 22, color: t.accent, marginBottom: 4, letterSpacing: '-0.01em'
+          }}>Simply Done</div>
+          <div style={{ fontSize: 10, color: t.textLight, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            A personal cookbook
+          </div>
+        </div>
+
+        <div style={{ padding: '8px 12px', flexShrink: 0 }}>
+          <button onClick={() => { setView('form'); setEditRecipe(null); }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            width: '100%', padding: '9px 14px', borderRadius: 10, border: 'none',
+            background: t.accent, color: t.accentText, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600
+          }}>
+            <Icon name="plus" size={15} /> New Recipe
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflow: 'auto', padding: '12px 12px' }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: t.textLight,
+            padding: '4px 8px', marginBottom: 4
+          }}>Categories</div>
+
+          {['All', ...CATEGORIES].map(cat => (
+            <button key={cat}
+              onClick={() => { setActiveCategory(cat); setView('browse'); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none',
+                background: activeCategory === cat ? t.bgAccent : 'none',
+                color: activeCategory === cat ? t.accent : t.textMuted,
+                cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                fontSize: 13, fontWeight: activeCategory === cat ? 600 : 400,
+                transition: 'all 0.12s'
+              }}>
+              <span>{cat}</span>
+              <span style={{
+                fontSize: 10, padding: '1px 6px', borderRadius: 99,
+                background: activeCategory === cat ? t.accent : t.bgAccent,
+                color: activeCategory === cat ? t.accentText : t.textLight
+              }}>{categoryCounts[cat] || 0}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ padding: '12px 12px', borderTop: `1px solid ${t.border}`, flexShrink: 0 }}>
+          <button onClick={() => setShowPrint(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none',
+            background: 'none', color: t.textMuted, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 13
+          }}>
+            <Icon name="print" size={14} /> Export to PDF
+          </button>
+        </div>
+      </div>
+
+      {/* Main area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Topbar */}
+        <div style={{
+          background: t.headerBg, borderBottom: `1px solid ${t.border}`,
+          padding: '0 28px', height: 56, display: 'flex', alignItems: 'center',
+          gap: 14, flexShrink: 0
+        }}>
+          <button onClick={() => setSidebarOpen(o => !o)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: t.textMuted, display: 'flex', padding: 4
+          }}>
+            <Icon name="menu" size={18} />
+          </button>
+
+          {view === 'browse' && (
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+              background: t.inputBg, borderRadius: 8, padding: '0 14px',
+              border: `1px solid ${t.inputBorder}`, maxWidth: 400
+            }}>
+              <Icon name="search" size={15} style={{ color: t.textLight, flexShrink: 0 }} />
+              <input
+                style={{
+                  flex: 1, border: 'none', background: 'none', outline: 'none',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: t.text,
+                  height: 36
+                }}
+                placeholder="Search recipes…"
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          {view === 'browse' && (
+            <span style={{ fontSize: 12, color: t.textMuted }}>
+              {filtered.length} recipe{filtered.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '0 28px' }}>
+          {view === 'browse' && (
+            <div style={{ paddingTop: 28 }}>
+              {activeCategory !== 'All' && (
+                <div style={{ marginBottom: 28 }}>
+                  <h2 style={{
+                    fontFamily: 'Playfair Display, serif', fontSize: 30,
+                    fontWeight: 700, color: t.text, marginBottom: 4
+                  }}>{activeCategory}</h2>
+                  <p style={{ fontSize: 13, color: t.textMuted }}>
+                    {filtered.length} recipe{filtered.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              )}
+              {activeCategory === 'All' && !searchQ && (
+                <div style={{ marginBottom: 28 }}>
+                  <h2 style={{
+                    fontFamily: 'Playfair Display, serif', fontSize: 30,
+                    fontWeight: 700, color: t.text, marginBottom: 4
+                  }}>All Recipes</h2>
+                  <p style={{ fontSize: 13, color: t.textMuted }}>Your full collection</p>
+                </div>
+              )}
+              {searchQ && (
+                <div style={{ marginBottom: 24, fontSize: 14, color: t.textMuted }}>
+                  Results for "<strong style={{ color: t.text }}>{searchQ}</strong>"
+                </div>
+              )}
+              {filtered.length === 0 ? (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 16, paddingTop: 80, color: t.textMuted
+                }}>
+                  <Icon name="book" size={48} style={{ opacity: 0.3 }} />
+                  <p style={{ fontSize: 15 }}>No recipes found</p>
+                  <button onClick={() => { setView('form'); setEditRecipe(null); }} style={{
+                    padding: '10px 20px', borderRadius: 8, border: 'none',
+                    background: t.accent, color: t.accentText, cursor: 'pointer',
+                    fontFamily: 'DM Sans, sans-serif', fontSize: 14
+                  }}>Add the first one</button>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                  gap: 20, paddingBottom: 48
+                }}>
+                  {filtered.map(recipe => (
+                    <RecipeCard key={recipe.id} recipe={recipe} t={t}
+                      onClick={() => { setActiveRecipe(recipe); setView('detail'); }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {view === 'detail' && activeRecipe && (
+            <RecipeDetail
+              recipe={activeRecipe}
+              t={t}
+              onBack={() => setView('browse')}
+              onEdit={() => { setEditRecipe(activeRecipe); setView('form'); }}
+              onDelete={handleDelete}
+            />
+          )}
+
+          {view === 'form' && (
+            <RecipeForm
+              initial={editRecipe}
+              t={t}
+              onSave={handleSave}
+              onCancel={() => setView(editRecipe ? 'detail' : 'browse')}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Print overlay */}
+      {showPrint && (
+        <PrintPreview recipes={recipes} t={t} onClose={() => setShowPrint(false)} />
+      )}
+
+      {/* Tweaks panel */}
+      <TweaksPanel>
+        <TweakSection label="Visual Theme" />
+        <TweakRadio label="Theme" value={tweaks.theme}
+          options={['lavender', 'midnight', 'spice']}
+          onChange={v => setTweak('theme', v)} />
+      </TweaksPanel>
+
+    </div>
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
