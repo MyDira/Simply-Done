@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const items: { id: number; order: number }[] = await req.json();
 

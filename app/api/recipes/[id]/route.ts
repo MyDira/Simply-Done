@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { serializeRecipe, recipeInclude } from '@/lib/serialize';
 
+export const dynamic = 'force-dynamic';
+
 type Params = { params: { id: string } };
 
 export async function GET(_req: NextRequest, { params }: Params) {
