@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Recipe {
+  id          Int          @id @default(autoincrement())
+  title       String
+  category    String
+  difficulty  String       @default("Easy")
+  prepTime    Int          @default(0)
+  cookTime    Int          @default(0)
+  servings    Int          @default(4)
+  description String?      @db.Text
+  story       String?      @db.Text
+  notes       String?      @db.Text
+  photo       String?
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tags        RecipeTag[]
+  ingredients Ingredient[]
+  steps       Step[]
+
+  @@index([category])
+  @@index([order])
+}
+
+model RecipeTag {
+  id       Int    @id @default(autoincrement())
+  name     String
+  recipeId Int
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model Ingredient {
+  id          Int     @id @default(autoincrement())
+  text        String
+  order       Int     @default(0)
+  isSeparator Boolean @default(false)
+  recipeId    Int
+  recipe      Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model Step {
+  id       Int    @id @default(autoincrement())
+  text     String
+  order    Int    @default(0)
+  recipeId Int
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model Dedication {
+  id      Int    @id @default(1)
+  title   String @default("A Note from the Chef")
+  content String @db.Text @default("")
+}
