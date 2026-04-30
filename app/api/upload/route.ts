@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -17,15 +21,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
   }
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  const ext = file.name.split('.').pop() || 'jpg';
+  const filename = `${crypto.randomUUID()}.${ext}`;
 
-  const ext = path.extname(file.name) || '.jpg';
-  const filename = `${crypto.randomUUID()}${ext}`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+  const { error } = await supabase.storage
+    .from('recipe-photos')
+    .upload(filename, file, { contentType: file.type, upsert: false });
 
-  await mkdir(uploadDir, { recursive: true });
-  await writeFile(path.join(uploadDir, filename), buffer);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
-  return NextResponse.json({ url: `/uploads/${filename}` });
+  const { data } = supabase.storage.from('recipe-photos').getPublicUrl(filename);
+
+  return NextResponse.json({ url: data.publicUrl });
 }
