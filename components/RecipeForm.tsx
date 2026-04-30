@@ -6,6 +6,7 @@ import { useTheme } from './ThemeContext';
 import Icon from './Icon';
 import DiffBadge from './DiffBadge';
 import { CATEGORIES, type Recipe, type RecipeFormData } from '@/lib/types';
+import type { Theme } from '@/lib/themes';
 
 interface Props {
   initial?: Recipe | null;
@@ -28,6 +29,27 @@ const EMPTY: RecipeFormData = {
   ingredients: [''],
   steps: [''],
 };
+
+function Section({ title, children, t }: { title: string; children: React.ReactNode; t: Theme }) {
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <h3
+        style={{
+          fontFamily: 'Playfair Display, serif',
+          fontSize: 17,
+          color: t.text,
+          fontWeight: 600,
+          marginBottom: 16,
+          paddingBottom: 10,
+          borderBottom: `1px solid ${t.border}`,
+        }}
+      >
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
 
 export default function RecipeForm({ initial, onSave, onCancel }: Props) {
   const { theme: t } = useTheme();
@@ -64,8 +86,7 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
     set(key, arr);
   };
 
-  const addListItem = (key: 'ingredients' | 'steps') =>
-    set(key, [...form[key], '']);
+  const addListItem = (key: 'ingredients' | 'steps') => set(key, [...form[key], '']);
 
   const removeListItem = (key: 'ingredients' | 'steps', idx: number) =>
     set(key, form[key].filter((_, i) => i !== idx));
@@ -107,25 +128,6 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
     color: t.textMuted,
     marginBottom: 6,
   };
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 28 }}>
-      <h3
-        style={{
-          fontFamily: 'Playfair Display, serif',
-          fontSize: 17,
-          color: t.text,
-          fontWeight: 600,
-          marginBottom: 16,
-          paddingBottom: 10,
-          borderBottom: `1px solid ${t.border}`,
-        }}
-      >
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
 
   return (
     <div style={{ maxWidth: 780, margin: '0 auto', padding: '0 0 80px' }}>
@@ -187,7 +189,7 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         </div>
       </div>
 
-      <Section title="Basics">
+      <Section title="Basics" t={t}>
         <div style={{ display: 'grid', gap: 16 }}>
           <div>
             <label style={labelStyle}>Recipe Title *</label>
@@ -256,7 +258,6 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
             </div>
           </div>
 
-          {/* Tags */}
           <div>
             <label style={labelStyle}>Tags</label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -321,8 +322,7 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         </div>
       </Section>
 
-      {/* Photo upload */}
-      <Section title="Photo">
+      <Section title="Photo" t={t}>
         <input
           ref={fileInputRef}
           type="file"
@@ -378,7 +378,6 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
               cursor: 'pointer',
               color: t.textMuted,
               background: t.inputBg,
-              transition: 'border-color 0.15s',
             }}
           >
             {uploading ? (
@@ -394,7 +393,7 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         )}
       </Section>
 
-      <Section title="Description & Story">
+      <Section title="Description & Story" t={t}>
         <div style={{ display: 'grid', gap: 16 }}>
           <div>
             <label style={labelStyle}>Description</label>
@@ -417,14 +416,10 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         </div>
       </Section>
 
-      <Section title="Ingredients">
+      <Section title="Ingredients" t={t}>
         <p style={{ fontSize: 12, color: t.textMuted, marginBottom: 12 }}>
           Use{' '}
-          <code
-            style={{ background: t.bgAccent, padding: '1px 5px', borderRadius: 4 }}
-          >
-            —
-          </code>{' '}
+          <code style={{ background: t.bgAccent, padding: '1px 5px', borderRadius: 4 }}>—</code>{' '}
           as a separator between ingredient groups.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -474,7 +469,7 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         </button>
       </Section>
 
-      <Section title="Method">
+      <Section title="Method" t={t}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {form.steps.map((step, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -542,7 +537,7 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         </button>
       </Section>
 
-      <Section title="Chef's Notes">
+      <Section title="Chef's Notes" t={t}>
         <textarea
           style={{ ...inputStyle, resize: 'vertical', minHeight: 90 }}
           value={form.notes}
@@ -551,7 +546,6 @@ export default function RecipeForm({ initial, onSave, onCancel }: Props) {
         />
       </Section>
 
-      {/* Difficulty preview */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 13, color: t.textMuted }}>Difficulty preview:</span>
         <DiffBadge level={form.difficulty} />
